@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0F0F1E">
+    <title>FlowState Pro - Life RPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        :root {
+            --primary: #FF6B35;
+            --secondary: #F7931E;
+            --accent: #FDC500;
+            --dark: #1A1A2E;
+            --darker: #0F0F1E;
+            --light: #FFFFFF;
+            --success: #00D9A3;
+            --purple: #9D4EDD;
+            --danger: #E63946;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--darker);
+            color: var(--light);
+            overflow-x: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100vh;
+            overscroll-behavior: none;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Header with stats */
+        .header {
+            background: linear-gradient(135deg, var(--darker) 0%, #16213E 100%);
+            padding: max(env(safe-area-inset-top), 20px) 20px 20px;
+            border-bottom: 2px solid rgba(255, 107, 53, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.1), transparent 70%);
+            animation: pulse 3s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .user-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 900;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+        }
+
+        .xp-display {
+            text-align: right;
+        }
+
+        .xp-number {
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .xp-label {
+            font-size: 10px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .progress-bar-container {
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: -20px;
+            right: 0;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        /* Main content area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 80px;
+        }
+
+        /* Bottom navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 107, 53, 0.2);
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: space-around;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: none;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* Tab content */
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Quick add button */
+        .quick-add-btn {
+            position: fixed;
+            bottom: calc(80px + env(safe-area-inset-bottom));
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            font-size: 32px;
+            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5);
+            z-index: 99;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .quick-add-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Task item with swipe */
+        .task-item {
+            background: rgba(255, 255, 255, 0.08);
+            border-left: 5px solid var(--primary);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            position: relative;
+            transition: transform 0.3s ease;
+            touch-action: pan-y;
+        }
+
+        .task-item.swiping-right {
+            transform: translateX(80px);
+        }
+
+        .task-item.swiping-left {
+            transform: translateX(-80px);
+        }
+
+        .swipe-action {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .swipe-action.complete {
+            left: -80px;
+            background: var(--success);
+        }
+
+        .swipe-action.delete {
+            right: -80px;
+            background: var(--danger);
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .task-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .xp-badge {
+            background: rgba(253, 197, 0, 0.2);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* Input styles */
+        input, textarea, select {
+            width: 100%;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 16px;
+            font-family: inherit;
+            margin-bottom: 15px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 15px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--purple), #7209B7);
+        }
+
+        /* Stats cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        /* Meal tracker */
+        .meal-quick-add {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .meal-btn {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .meal-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 107, 53, 0.2);
+        }
+
+        .meal-emoji {
+            font-size: 32px;
+        }
+
+        .meal-name {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .meal-cal {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        /* Calorie progress circle */
+        .calorie-circle {
+            width: 200px;
+            height: 200px;
+            margin: 30px auto;
+            position: relative;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 12;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke: url(#gradient);
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+
+        .circle-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .circle-number {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--accent);
+        }
+
+        .circle-label {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        /* Habit tracker */
+        .habit-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .habit-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .habit-card:active {
+            transform: scale(0.95);
+        }
+
+        .habit-card.completed {
+            background: rgba(0, 217, 163, 0.2);
+            border-color: var(--success);
+        }
+
+        .habit-emoji {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .habit-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .habit-streak {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent);
+        }
+
+        /* Project breakdown */
+        .project-phase {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 4px solid var(--primary);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .phase-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .phase-time {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .phase-task {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        /* Voice input animation */
+        .voice-recording {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(135deg, var(--danger), var(--primary));
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            z-index: 1000;
+            animation: voicePulse 1s infinite;
+        }
+
+        .voice-recording.active {
+            display: flex;
+        }
+
+        @keyframes voicePulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 20px;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--dark);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        /* Confetti animation */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            animation: confettiFall 3s linear;
+            z-index: 999;
+        }
+
+        @keyframes confettiFall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Achievement popup */
+        .achievement {
+            position: fixed;
+            top: calc(env(safe-area-inset-top) + 20px);
+            left: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--success), #06D6A0);
+            padding: 20px;
+            border-radius: 15px;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            animation: slideDown 0.5s ease;
+        }
+
+        .achievement.show {
+            display: flex;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .achievement-icon {
+            font-size: 48px;
+        }
+
+        .achievement-text {
+            flex: 1;
+        }
+
+        .achievement-title {
+            font-weight: 900;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .achievement-desc {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.5;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        /* iOS-style toggle */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle.active {
+            background: var(--success);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle.active .toggle-slider {
+            transform: translateX(22px);
+        }
+
+        /* Camera button */
+        .camera-btn {
+            width: 100%;
+            padding: 60px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed rgba(255, 107, 53, 0.5);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .camera-icon {
+            font-size: 64px;
+        }
+
+        /* Light theme adjustments */
+        body.light-theme {
+            background: #F5F5F5;
+            color: #000000;
+        }
+
+        body.light-theme .header {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F0F0F0 100%);
+        }
+
+        body.light-theme .task-item,
+        body.light-theme .stat-card,
+        body.light-theme .habit-card {
+            background: rgba(0, 0, 0, 0.05);
+            color: #000000;
+        }
+
+        /* Animation for emoji reactions */
+        @keyframes emojiPop {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .emoji-reaction {
+            animation: emojiPop 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header with XP -->
+        <div class="header">
+            <div class="user-stats">
+                <div class="level-badge">⚡ LVL <span id="userLevel">1</span></div>
+                <div class="xp-display">
+                    <div class="xp-number"><span id="userXP">0</span> XP</div>
+                    <div class="xp-label">TOTAL EARNED</div>
+                </div>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-text"><span id="xpProgress">0</span> / <span id="xpNext">100</span></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="xpBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-value" id="streakCount">0</div>
+                        <div class="stat-label">Day Streak</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-value" id="todayTasks">0</div>
+                        <div class="stat-label">Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🍽️</div>
+                        <div class="stat-value" id="todayCals">0</div>
+                        <div class="stat-label">Calories</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💪</div>
+                        <div class="stat-value" id="habitsDone">0</div>
+                        <div class="stat-label">Habits</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 15px; font-size: 20px;">🎯 Today's Tasks</h3>
+                <div id="todayTaskList"></div>
+            </div>
+
+            <!-- Tasks Tab -->
+            <div id="tasks" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">📋 All Tasks</h3>
+                <div id="allTasksList"></div>
+            </div>
+
+            <!-- Nutrition Tab -->
+            <div id="nutrition" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">🍽️ Today's Nutrition</h3>
+                
+                <div class="calorie-circle">
+                    <svg width="200" height="200">
+                        <defs>
+                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#FF6B35" />
+                                <stop offset="100%" style="stop-color:#FDC500" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="100" cy="100" r="90" class="circle-bg"/>
+                        <circle id="calorieCircle" cx="100" cy="100" r="90" class="circle-progress" 
+                                stroke-dasharray="565" stroke-dashoffset="565"/>
+                    </svg>
+                    <div class="circle-text">
+                        <div class="circle-number" id="calorieCount">0</div>
+                        <div class="circle-label">/ <span id="calorieGoal">2000</span></div>
+                    </div>
+                </div>
+
+                <h4 style="margin: 20px 0 10px; font-size: 16px;">⚡ Quick Add</h4>
+                <div class="meal-quick-add">
+                    <div class="meal-btn" onclick="addMeal('🍕 Pizza', 350)">
+                        <div class="meal-emoji">🍕</div>
+                        <div class="meal-name">Pizza</div>
+                        <div class="meal-cal">350 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="addMeal('🍔 Burger', 550)">
+                        <div class="meal-emoji">🍔</div>
+                        <div class="meal-name">Burger</div>
+                        <div class="meal-cal">550 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="addMeal('🥗 Salad', 200)">
+                        <div class="meal-emoji">🥗</div>
+                        <div class="meal-name">Salad</div>
+                        <div class="meal-cal">200 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="addMeal('🍗 Chicken', 250)">
+                        <div class="meal-emoji">🍗</div>
+                        <div class="meal-name">Chicken</div>
+                        <div class="meal-cal">250 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="addMeal('🍜 Ramen', 400)">
+                        <div class="meal-emoji">🍜</div>
+                        <div class="meal-name">Ramen</div>
+                        <div class="meal-cal">400 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="addMeal('🥙 Wrap', 300)">
+                        <div class="meal-emoji">🥙</div>
+                        <div class="meal-name">Wrap</div>
+                        <div class="meal-cal">300 cal</div>
+                    </div>
+                </div>
+
+                <button class="camera-btn" onclick="openPhotoMealModal()">
+                    <div class="camera-icon">📸</div>
+                    <div>Snap & Log Meal</div>
+                </button>
+                <input type="file" id="mealPhoto" accept="image/*" capture="environment" style="display: none;" onchange="handleMealPhoto(event)">
+                
+                <h4 style="margin: 30px 0 10px; font-size: 16px;">⚙️ Daily Goal</h4>
+                <input type="number" id="calorieGoalInput" placeholder="2000" value="2000">
+                <button class="btn btn-secondary" onclick="updateCalorieGoal()">Update Goal</button>
+
+                <input type="number" id="customCalories" placeholder="Custom calories..." style="margin-bottom: 10px;">
+                <button class="btn" onclick="addCustomMeal()">Add Custom Meal</button>
+            </div>
+
+            <!-- Habits Tab -->
+            <div id="habits" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">💪 Daily Habits</h3>
+                <div class="habit-grid" id="habitGrid"></div>
+                
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">➕ Add New Habit</h4>
+                <input type="text" id="newHabitName" placeholder="Habit name...">
+                <input type="text" id="newHabitEmoji" placeholder="Emoji (e.g., 📚)" maxlength="2">
+                <button class="btn" onclick="addHabit()">Create Habit</button>
+            </div>
+
+            <!-- Achievements Tab -->
+            <div id="achievements" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">🏆 Your Achievements</h3>
+                
+                <div class="stats-grid" style="margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-icon">🏅</div>
+                        <div class="stat-value" id="badgeCount">0</div>
+                        <div class="stat-label">Badges Earned</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-value" id="achievementPercent">0%</div>
+                        <div class="stat-label">Completion</div>
+                    </div>
+                </div>
+
+                <div id="achievementsList"></div>
+            </div>
+
+            <!-- Social Tab -->
+            <div id="social" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">👥 Social & Sharing</h3>
+                
+                <div style="background: rgba(255, 107, 53, 0.1); border: 2px solid var(--primary); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 15px;">📊 Your Stats</h4>
+                    <div style="font-size: 14px; line-height: 1.8;">
+                        <div>🏆 Level: <strong id="shareLvl">1</strong></div>
+                        <div>⚡ XP: <strong id="shareXP">0</strong></div>
+                        <div>🔥 Streak: <strong id="shareStreak">0</strong> days</div>
+                        <div>✅ Tasks Done: <strong id="shareTasksDone">0</strong></div>
+                    </div>
+                    <button class="btn" onclick="shareProgress()" style="margin-top: 15px;">Share Progress 📱</button>
+                </div>
+
+                <div style="background: rgba(157, 78, 221, 0.1); border: 2px solid var(--purple); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 15px;">🎮 Challenge Code</h4>
+                    <p style="font-size: 14px; opacity: 0.8; margin-bottom: 15px;">Share this code with friends to compare stats!</p>
+                    <div id="challengeCode" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; text-align: center; font-family: 'Space Mono', monospace; font-size: 18px; color: var(--accent); margin-bottom: 15px;"></div>
+                    <button class="btn btn-secondary" onclick="generateChallengeCode()">Generate Code 🔥</button>
+                </div>
+
+                <div style="background: rgba(0, 217, 163, 0.1); border: 2px solid var(--success); border-radius: 15px; padding: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 15px;">📤 Export Data</h4>
+                    <p style="font-size: 14px; opacity: 0.8; margin-bottom: 15px;">Export your tasks to Apple Calendar for native reminders!</p>
+                    <button class="btn" onclick="exportToCalendar()">📅 Export to Calendar</button>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">📊 Your Analytics</h3>
+                
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px;">📈 This Week</h4>
+                    <canvas id="weekChart" style="width: 100%; height: 200px;"></canvas>
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px;">🔥 Streak Calendar</h4>
+                    <div id="streakCalendar" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;"></div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-value" id="totalTasks">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-value" id="totalHours">0</div>
+                        <div class="stat-label">Hours Logged</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🥇</div>
+                        <div class="stat-value" id="bestStreak">0</div>
+                        <div class="stat-label">Best Streak</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📆</div>
+                        <div class="stat-value" id="activeDays">0</div>
+                        <div class="stat-label">Active Days</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">⚙️ Settings</h3>
+                
+                <div class="toggle-container">
+                    <div>
+                        <div style="font-weight: 700; margin-bottom: 5px;">🌙 Dark Mode</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Currently: <span id="themeLabel">Dark</span></div>
+                    </div>
+                    <div class="toggle active" id="themeToggle" onclick="cycleTheme()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <div>
+                        <div style="font-weight: 700; margin-bottom: 5px;">🔔 Notifications</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Browser alerts</div>
+                    </div>
+                    <div class="toggle" id="notifToggle" onclick="toggleNotifications()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-container">
+                    <div>
+                        <div style="font-weight: 700; margin-bottom: 5px;">📳 Haptic Feedback</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Vibration on actions</div>
+                    </div>
+                    <div class="toggle active" id="hapticToggle" onclick="toggleHaptic()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">🍽️ Nutrition</h4>
+                <button class="btn btn-secondary" onclick="switchTab('nutrition')">Track Food 🍽️</button>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">🤖 Projects</h4>
+                <button class="btn btn-secondary" onclick="switchTab('projects')">Smart Planning 🤖</button>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">🏆 Achievements</h4>
+                <button class="btn btn-secondary" onclick="switchTab('achievements')">View Badges 🏆</button>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">📊 Analytics</h4>
+                <button class="btn btn-secondary" onclick="switchTab('analytics')">View Stats 📊</button>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">📱 iOS Shortcuts Setup</h4>
+                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; margin-bottom: 15px;">
+                    <p style="font-size: 14px; line-height: 1.6; margin-bottom: 15px;">Create iOS Shortcuts to auto-open FlowState at specific times!</p>
+                    <button class="btn btn-secondary" onclick="showShortcutsGuide()">View Setup Guide 📖</button>
+                </div>
+
+                <h4 style="margin: 30px 0 15px; font-size: 16px;">💾 Data Management</h4>
+                <button class="btn" onclick="exportAllData()" style="margin-bottom: 10px;">📥 Backup All Data</button>
+                <button class="btn btn-secondary" onclick="importData()" style="margin-bottom: 10px;">📤 Restore Data</button>
+                <button class="btn" onclick="resetAllData()" style="background: linear-gradient(135deg, var(--danger), #C1121F);">⚠️ Reset Everything</button>
+            </div>
+
+            <!-- Projects Tab -->
+            <div id="projects" class="tab-content">
+                <h3 style="margin-bottom: 15px; font-size: 20px;">🤖 Project Autopilot</h3>
+                
+                <input type="text" id="projectName" placeholder="Project name (e.g., History Essay)">
+                <input type="date" id="projectDue">
+                <input type="number" id="projectHours" placeholder="Estimated hours needed">
+                
+                <label style="display: block; margin: 15px 0 10px; font-size: 14px;">Project Type:</label>
+                <select id="projectType">
+                    <option value="essay">📝 Essay/Paper</option>
+                    <option value="study">📚 Study/Exam Prep</option>
+                    <option value="coding">💻 Coding Project</option>
+                    <option value="creative">🎨 Creative Project</option>
+                </select>
+
+                <button class="btn" onclick="generateProjectPlan()" style="margin-top: 15px;">Generate Smart Plan 🚀</button>
+
+                <div id="projectResult" style="margin-top: 30px;"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="switchTab('dashboard')">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Home</div>
+            </button>
+            <button class="nav-item" onclick="switchTab('tasks')">
+                <div class="nav-icon">✅</div>
+                <div class="nav-label">Tasks</div>
+            </button>
+            <button class="nav-item" onclick="switchTab('habits')">
+                <div class="nav-icon">💪</div>
+                <div class="nav-label">Habits</div>
+            </button>
+            <button class="nav-item" onclick="switchTab('social')">
+                <div class="nav-icon">👥</div>
+                <div class="nav-label">Social</div>
+            </button>
+            <button class="nav-item" onclick="switchTab('settings')">
+                <div class="nav-icon">⚙️</div>
+                <div class="nav-label">More</div>
+            </button>
+        </div>
+
+        <!-- Quick Add FAB -->
+        <button class="quick-add-btn" onclick="showQuickAdd()">+</button>
+
+        <!-- Voice Recording Indicator -->
+        <div class="voice-recording" id="voiceIndicator">🎤</div>
+
+        <!-- Achievement Notification -->
+        <div class="achievement" id="achievementPopup">
+            <div class="achievement-icon">🏆</div>
+            <div class="achievement-text">
+                <div class="achievement-title" id="achievementTitle"></div>
+                <div class="achievement-desc" id="achievementDesc"></div>
+            </div>
+        </div>
+
+        <!-- Quick Add Modal -->
+        <div class="modal" id="quickAddModal">
+            <div class="modal-content">
+                <div class="modal-header">⚡ Quick Add</div>
+                
+                <div class="toggle-container">
+                    <span>🎤 Voice Input</span>
+                    <div class="toggle" id="voiceToggle" onclick="toggleVoice()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <input type="text" id="quickTaskInput" placeholder="What needs to get done?">
+                <input type="datetime-local" id="quickTaskTime">
+                
+                <label style="display: block; margin: 15px 0 10px; font-size: 14px;">Set Reminder:</label>
+                <select id="quickReminder">
+                    <option value="0">At task time</option>
+                    <option value="5">5 min before</option>
+                    <option value="15" selected>15 min before</option>
+                    <option value="30">30 min before</option>
+                    <option value="60">1 hour before</option>
+                </select>
+
+                <button class="btn" onclick="addQuickTask()" style="margin-top: 20px;">Add Task +50 XP</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="margin-top: 10px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Photo Meal Selection Modal -->
+        <div class="modal" id="photoMealModal">
+            <div class="modal-content">
+                <div class="modal-header">📸 What did you eat?</div>
+                <img id="mealPhotoPreview" style="width: 100%; border-radius: 15px; margin-bottom: 20px; display: none;">
+                
+                <div class="meal-quick-add">
+                    <div class="meal-btn" onclick="logPhotoMeal('🍕 Pizza', 350)">
+                        <div class="meal-emoji">🍕</div>
+                        <div class="meal-name">Pizza</div>
+                        <div class="meal-cal">350 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="logPhotoMeal('🍔 Burger', 550)">
+                        <div class="meal-emoji">🍔</div>
+                        <div class="meal-name">Burger</div>
+                        <div class="meal-cal">550 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="logPhotoMeal('🥗 Salad', 200)">
+                        <div class="meal-emoji">🥗</div>
+                        <div class="meal-name">Salad</div>
+                        <div class="meal-cal">200 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="logPhotoMeal('🍝 Pasta', 400)">
+                        <div class="meal-emoji">🍝</div>
+                        <div class="meal-name">Pasta</div>
+                        <div class="meal-cal">400 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="logPhotoMeal('🌮 Tacos', 450)">
+                        <div class="meal-emoji">🌮</div>
+                        <div class="meal-name">Tacos</div>
+                        <div class="meal-cal">450 cal</div>
+                    </div>
+                    <div class="meal-btn" onclick="logPhotoMeal('🍱 Rice Bowl', 500)">
+                        <div class="meal-emoji">🍱</div>
+                        <div class="meal-name">Rice Bowl</div>
+                        <div class="meal-cal">500 cal</div>
+                    </div>
+                </div>
+
+                <input type="number" id="photoCustomCal" placeholder="Or enter custom calories...">
+                <button class="btn" onclick="logPhotoCustom()">Log Custom Amount</button>
+                <button class="btn btn-secondary" onclick="closePhotoMealModal()" style="margin-top: 10px;">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Shortcuts Guide Modal -->
+        <div class="modal" id="shortcutsModal">
+            <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">📱 iOS Shortcuts Setup</div>
+                
+                <div style="background: rgba(255, 107, 53, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 10px;">🌅 Morning Auto-Open</h4>
+                    <p style="font-size: 13px; line-height: 1.6; margin-bottom: 10px;">Have FlowState open automatically every morning at 7am:</p>
+                    <ol style="font-size: 13px; line-height: 1.8; padding-left: 20px;">
+                        <li>Open <strong>Shortcuts</strong> app on iPhone</li>
+                        <li>Tap <strong>Automation</strong> tab (bottom)</li>
+                        <li>Tap <strong>+</strong> (top right)</li>
+                        <li>Choose <strong>"Time of Day"</strong></li>
+                        <li>Set time to <strong>7:00 AM</strong></li>
+                        <li>Choose <strong>"Daily"</strong></li>
+                        <li>Tap <strong>"Add Action"</strong></li>
+                        <li>Search for <strong>"Open URL"</strong></li>
+                        <li>Paste your FlowState link</li>
+                        <li>Toggle OFF <strong>"Ask Before Running"</strong></li>
+                        <li>Tap <strong>Done</strong></li>
+                    </ol>
+                </div>
+
+                <div style="background: rgba(157, 78, 221, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 10px;">🌙 Evening Reminder</h4>
+                    <p style="font-size: 13px; line-height: 1.6; margin-bottom: 10px;">Get reminded to log your day at 9pm:</p>
+                    <p style="font-size: 13px; opacity: 0.8;">Same steps as above, but set time to <strong>9:00 PM</strong></p>
+                </div>
+
+                <div style="background: rgba(0, 217, 163, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: var(--accent); margin-bottom: 10px;">🎤 Siri Quick Add</h4>
+                    <p style="font-size: 13px; line-height: 1.6;">Say "Hey Siri, add task" to quickly open FlowState! (Coming soon - needs custom Siri shortcuts)</p>
+                </div>
+
+                <button class="btn" onclick="closeShortcutsModal()">Got It! 👍</button>
+            </div>
+        </div>
+            <div class="modal-content">
+                <div class="modal-header">⚡ Quick Add</div>
+                
+                <div class="toggle-container">
+                    <span>🎤 Voice Input</span>
+                    <div class="toggle" id="voiceToggle" onclick="toggleVoice()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+
+                <input type="text" id="quickTaskInput" placeholder="What needs to get done?">
+                <input type="datetime-local" id="quickTaskTime">
+                
+                <label style="display: block; margin: 15px 0 10px; font-size: 14px;">Set Reminder:</label>
+                <select id="quickReminder">
+                    <option value="0">At task time</option>
+                    <option value="5">5 min before</option>
+                    <option value="15" selected>15 min before</option>
+                    <option value="30">30 min before</option>
+                    <option value="60">1 hour before</option>
+                </select>
+
+                <button class="btn" onclick="addQuickTask()" style="margin-top: 20px;">Add Task +50 XP</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="margin-top: 10px;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data storage
+        let userData = JSON.parse(localStorage.getItem('userData')) || {
+            xp: 0,
+            level: 1,
+            streak: 0,
+            lastActive: new Date().toDateString(),
+            achievements: [],
+            bestStreak: 0,
+            totalTasksCompleted: 0,
+            totalHoursLogged: 0,
+            activeDays: 0
+        };
+
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let habits = JSON.parse(localStorage.getItem('habits')) || [
+            { id: 1, name: 'Study', emoji: '📚', streak: 0, completed: false },
+            { id: 2, name: 'Workout', emoji: '💪', streak: 0, completed: false },
+            { id: 3, name: 'Sleep 8h', emoji: '😴', streak: 0, completed: false }
+        ];
+        let meals = JSON.parse(localStorage.getItem('meals')) || [];
+        let calorieGoal = parseInt(localStorage.getItem('calorieGoal')) || 2000;
+        let settings = JSON.parse(localStorage.getItem('settings')) || {
+            theme: 'dark',
+            notifications: true,
+            haptic: true
+        };
+
+        // Achievement definitions
+        const ACHIEVEMENTS = [
+            { id: 'early_bird', name: '🌅 Early Bird', desc: 'Log task before 8am', check: () => new Date().getHours() < 8 },
+            { id: 'night_owl', name: '🦉 Night Owl', desc: 'Log task after 10pm', check: () => new Date().getHours() >= 22 },
+            { id: 'hot_streak_7', name: '🔥 Hot Streak', desc: '7 day streak', check: () => userData.streak >= 7 },
+            { id: 'hot_streak_30', name: '🔥🔥 Inferno', desc: '30 day streak', check: () => userData.streak >= 30 },
+            { id: 'speed_demon', name: '⚡ Speed Demon', desc: 'Complete 5 tasks in 1 hour', check: () => false }, // Manual trigger
+            { id: 'beast_mode', name: '💪 Beast Mode', desc: 'Complete 10 tasks in one day', check: () => {
+                const today = new Date().toDateString();
+                return tasks.filter(t => t.date === today && t.completed).length >= 10;
+            }},
+            { id: 'perfect_week', name: '🥇 Perfect Week', desc: 'All habits for 7 days', check: () => {
+                return habits.every(h => h.streak >= 7);
+            }},
+            { id: 'nutrition_ninja', name: '🍽️ Nutrition Ninja', desc: 'Track meals for 30 days', check: () => false }, // Manual
+            { id: 'level_10', name: '👑 Rising Star', desc: 'Reach level 10', check: () => userData.level >= 10 },
+            { id: 'level_25', name: '👑 Pro Player', desc: 'Reach level 25', check: () => userData.level >= 25 },
+            { id: 'level_50', name: '👑 Legend', desc: 'Reach level 50', check: () => userData.level >= 50 },
+            { id: 'task_master', name: '📋 Task Master', desc: 'Complete 100 tasks', check: () => userData.totalTasksCompleted >= 100 },
+            { id: 'consistency', name: '🎯 Consistency King', desc: 'Log activity 30 days in a row', check: () => userData.streak >= 30 },
+            { id: 'first_task', name: '🎉 First Steps', desc: 'Complete your first task', check: () => userData.totalTasksCompleted >= 1 },
+            { id: 'habit_starter', name: '💪 Habit Starter', desc: 'Log a habit for the first time', check: () => habits.some(h => h.streak > 0) }
+        ];
+
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let currentSwipeElement = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStreak();
+            updateUI();
+            renderTasks();
+            renderHabits();
+            updateNutrition();
+            renderAchievements();
+            updateAnalytics();
+            updateSocialTab();
+            requestNotificationPermission();
+            setupSwipeListeners();
+            applyTheme();
+
+            // Set default datetime to now
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('quickTaskTime').value = now.toISOString().slice(0, 16);
+            document.getElementById('projectDue').value = now.toISOString().slice(0, 10);
+            document.getElementById('calorieGoalInput').value = calorieGoal;
+
+            // Update notification toggle
+            if (Notification.permission === 'granted') {
+                document.getElementById('notifToggle').classList.add('active');
+            }
+
+            // Check for new achievements on load
+            checkAchievements();
+        });
+
+        // Check and update streak
+        function checkStreak() {
+            const today = new Date().toDateString();
+            const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+            if (userData.lastActive === yesterday) {
+                // Streak continues
+            } else if (userData.lastActive !== today) {
+                // Streak broken
+                userData.streak = 0;
+            }
+
+            userData.lastActive = today;
+            saveUserData();
+        }
+
+        // XP and Level System
+        function addXP(amount, reason) {
+            const oldLevel = userData.level;
+            userData.xp += amount;
+
+            // Level up calculation
+            const xpForNextLevel = userData.level * 100;
+            while (userData.xp >= xpForNextLevel) {
+                userData.xp -= xpForNextLevel;
+                userData.level++;
+            }
+
+            saveUserData();
+            updateUI();
+
+            // Show achievement if leveled up
+            if (userData.level > oldLevel) {
+                showAchievement('🎉 LEVEL UP!', `You're now Level ${userData.level}!`);
+                triggerConfetti();
+                vibrate([200, 100, 200]);
+            } else {
+                showFloatingXP(amount, reason);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('userLevel').textContent = userData.level;
+            document.getElementById('userXP').textContent = userData.xp;
+            document.getElementById('streakCount').textContent = userData.streak;
+
+            const xpForNext = userData.level * 100;
+            document.getElementById('xpNext').textContent = xpForNext;
+            document.getElementById('xpProgress').textContent = userData.xp;
+
+            const progress = (userData.xp / xpForNext) * 100;
+            document.getElementById('xpBar').style.width = progress + '%';
+
+            // Update stats
+            const today = new Date().toDateString();
+            const todayTasks = tasks.filter(t => t.date === today && t.completed).length;
+            const todayHabits = habits.filter(h => h.completed).length;
+            const todayCals = meals.reduce((sum, m) => sum + m.calories, 0);
+
+            document.getElementById('todayTasks').textContent = todayTasks;
+            document.getElementById('habitsDone').textContent = todayHabits;
+            document.getElementById('todayCals').textContent = todayCals;
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.closest('.nav-item').classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            if (tabName === 'nutrition') updateNutrition();
+        }
+
+        // Quick Add Modal
+        function showQuickAdd() {
+            document.getElementById('quickAddModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('quickAddModal').classList.remove('active');
+        }
+
+        function addQuickTask() {
+            const title = document.getElementById('quickTaskInput').value.trim();
+            const datetime = document.getElementById('quickTaskTime').value;
+            const reminderMins = parseInt(document.getElementById('quickReminder').value);
+
+            if (!title || !datetime) {
+                vibrate(200);
+                return;
+            }
+
+            const task = {
+                id: Date.now(),
+                title: title,
+                date: datetime.split('T')[0],
+                time: datetime.split('T')[1],
+                completed: false,
+                xp: 50,
+                reminderMins: reminderMins
+            };
+
+            tasks.push(task);
+            saveTasks();
+            renderTasks();
+            addXP(10, 'Task Created');
+            
+            closeModal();
+            document.getElementById('quickTaskInput').value = '';
+            vibrate(100);
+            
+            // Set notification
+            scheduleNotification(task);
+        }
+
+        // Voice Input
+        function toggleVoice() {
+            const toggle = document.getElementById('voiceToggle');
+            const isActive = toggle.classList.toggle('active');
+            
+            if (isActive) {
+                startVoiceInput();
+            }
+        }
+
+        function startVoiceInput() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Voice input not supported on your browser');
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            
+            const indicator = document.getElementById('voiceIndicator');
+            indicator.classList.add('active');
+            vibrate([100, 50, 100]);
+            
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('quickTaskInput').value = transcript;
+                indicator.classList.remove('active');
+                document.getElementById('voiceToggle').classList.remove('active');
+                vibrate(200);
+            };
+
+            recognition.onerror = () => {
+                indicator.classList.remove('active');
+                document.getElementById('voiceToggle').classList.remove('active');
+            };
+
+            recognition.onend = () => {
+                indicator.classList.remove('active');
+            };
+        }
+
+        // Tasks
+        function renderTasks() {
+            const today = new Date().toDateString();
+            const todayTasks = tasks.filter(t => t.date === today);
+            const allTasks = [...tasks].sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+
+            // Today's tasks
+            const todayContainer = document.getElementById('todayTaskList');
+            if (todayTasks.length === 0) {
+                todayContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div>No tasks today! Add one below.</div>';
+            } else {
+                todayContainer.innerHTML = todayTasks.map(task => createTaskHTML(task)).join('');
+            }
+
+            // All tasks
+            const allContainer = document.getElementById('allTasksList');
+            if (allTasks.length === 0) {
+                allContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No tasks yet! Tap + to add one.</div>';
+            } else {
+                allContainer.innerHTML = allTasks.map(task => createTaskHTML(task)).join('');
+            }
+        }
+
+        function createTaskHTML(task) {
+            const dateStr = new Date(task.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const completed = task.completed ? 'style="opacity: 0.5; text-decoration: line-through;"' : '';
+            
+            return `
+                <div class="task-item" data-task-id="${task.id}" ${completed}>
+                    <div class="swipe-action complete">✓</div>
+                    <div class="swipe-action delete">🗑️</div>
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-meta">
+                        <span>📅 ${dateStr} ${task.time || ''}</span>
+                        <span class="xp-badge">+${task.xp || 50} XP</span>
+                        ${task.reminderMins ? '<span>🔔 Reminder set</span>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Swipe gestures
+        function setupSwipeListeners() {
+            document.addEventListener('touchstart', handleTouchStart, { passive: true });
+            document.addEventListener('touchmove', handleTouchMove, { passive: true });
+            document.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+
+        function handleTouchStart(e) {
+            const taskItem = e.target.closest('.task-item');
+            if (taskItem) {
+                touchStartX = e.touches[0].clientX;
+                currentSwipeElement = taskItem;
+            }
+        }
+
+        function handleTouchMove(e) {
+            if (!currentSwipeElement) return;
+            
+            touchEndX = e.touches[0].clientX;
+            const diff = touchEndX - touchStartX;
+            
+            if (Math.abs(diff) > 20) {
+                if (diff > 0) {
+                    currentSwipeElement.classList.add('swiping-right');
+                    currentSwipeElement.classList.remove('swiping-left');
+                } else {
+                    currentSwipeElement.classList.add('swiping-left');
+                    currentSwipeElement.classList.remove('swiping-right');
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (!currentSwipeElement) return;
+            
+            const diff = touchEndX - touchStartX;
+            const taskId = parseInt(currentSwipeElement.dataset.taskId);
+            
+            if (diff > 80) {
+                // Swipe right = complete
+                completeTask(taskId);
+            } else if (diff < -80) {
+                // Swipe left = delete
+                deleteTask(taskId);
+            }
+            
+            currentSwipeElement.classList.remove('swiping-right', 'swiping-left');
+            currentSwipeElement = null;
+        }
+
+        function completeTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task && !task.completed) {
+                task.completed = true;
+                userData.totalTasksCompleted++;
+                saveTasks();
+                renderTasks();
+                addXP(task.xp || 50, 'Task Complete');
+                vibrate([100, 50, 100]);
+                
+                // Update streak
+                userData.streak++;
+                if (userData.streak > userData.bestStreak) {
+                    userData.bestStreak = userData.streak;
+                }
+                saveUserData();
+                updateUI();
+                
+                // Check achievements
+                checkAchievements();
+            }
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+            vibrate(200);
+        }
+
+        // Habits
+        function renderHabits() {
+            const container = document.getElementById('habitGrid');
+            container.innerHTML = habits.map(habit => `
+                <div class="habit-card ${habit.completed ? 'completed' : ''}" onclick="toggleHabit(${habit.id})">
+                    <div class="habit-emoji">${habit.emoji}</div>
+                    <div class="habit-name">${habit.name}</div>
+                    <div class="habit-streak">${habit.streak} 🔥</div>
+                    <div style="font-size: 12px; opacity: 0.7; margin-top: 8px;">
+                        ${habit.completed ? '✓ Done today!' : 'Tap to log'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleHabit(id) {
+            const habit = habits.find(h => h.id === id);
+            if (!habit) return;
+
+            if (!habit.completed) {
+                habit.completed = true;
+                habit.streak++;
+                addXP(25, 'Habit Logged');
+                vibrate([100, 50, 100]);
+            }
+
+            saveHabits();
+            renderHabits();
+            updateUI();
+        }
+
+        function addHabit() {
+            const name = document.getElementById('newHabitName').value.trim();
+            const emoji = document.getElementById('newHabitEmoji').value.trim();
+
+            if (!name) return;
+
+            habits.push({
+                id: Date.now(),
+                name: name,
+                emoji: emoji || '📌',
+                streak: 0,
+                completed: false
+            });
+
+            saveHabits();
+            renderHabits();
+            
+            document.getElementById('newHabitName').value = '';
+            document.getElementById('newHabitEmoji').value = '';
+            
+            addXP(10, 'Habit Created');
+            vibrate(100);
+        }
+
+        // Nutrition
+        function addMeal(name, calories) {
+            meals.push({
+                name: name,
+                calories: calories,
+                timestamp: new Date().toISOString()
+            });
+            
+            saveMeals();
+            updateNutrition();
+            addXP(15, 'Meal Logged');
+            vibrate(100);
+        }
+
+        function addCustomMeal() {
+            const calories = parseInt(document.getElementById('customCalories').value);
+            if (!calories) return;
+
+            addMeal('Custom Meal', calories);
+            document.getElementById('customCalories').value = '';
+        }
+
+        function handleMealPhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // In a real app, you'd upload this and use AI to estimate calories
+                // For now, just prompt user
+                const estimated = prompt('Estimated calories for this meal?', '500');
+                if (estimated) {
+                    addMeal('📸 Photo Meal', parseInt(estimated));
+                }
+            }
+        }
+
+        function updateNutrition() {
+            const totalCals = meals.reduce((sum, m) => sum + m.calories, 0);
+            document.getElementById('calorieCount').textContent = totalCals;
+            document.getElementById('calorieGoal').textContent = calorieGoal;
+
+            const progress = Math.min((totalCals / calorieGoal) * 100, 100);
+            const circumference = 2 * Math.PI * 90;
+            const offset = circumference - (progress / 100) * circumference;
+            document.getElementById('calorieCircle').style.strokeDashoffset = offset;
+        }
+
+        // Project Autopilot
+        function generateProjectPlan() {
+            const name = document.getElementById('projectName').value.trim();
+            const dueDate = document.getElementById('projectDue').value;
+            const hours = parseInt(document.getElementById('projectHours').value);
+            const type = document.getElementById('projectType').value;
+
+            if (!name || !dueDate || !hours) {
+                vibrate(200);
+                return;
+            }
+
+            const today = new Date();
+            const due = new Date(dueDate);
+            const daysAvailable = Math.ceil((due - today) / 86400000);
+
+            if (daysAvailable < 1) {
+                alert('Due date must be in the future!');
+                return;
+            }
+
+            // Generate phases based on project type
+            let phases = [];
+            if (type === 'essay') {
+                phases = [
+                    { name: 'Research', percent: 30, tasks: ['Find sources', 'Read & take notes', 'Organize info'] },
+                    { name: 'Outline', percent: 15, tasks: ['Structure argument', 'Create outline'] },
+                    { name: 'Draft', percent: 40, tasks: ['Write introduction', 'Write body paragraphs', 'Write conclusion'] },
+                    { name: 'Revise', percent: 15, tasks: ['Edit content', 'Grammar check', 'Citations'] }
+                ];
+            } else if (type === 'study') {
+                phases = [
+                    { name: 'Review Material', percent: 35, tasks: ['Read chapters', 'Review notes', 'Highlight key concepts'] },
+                    { name: 'Practice', percent: 40, tasks: ['Practice problems', 'Flashcards', 'Quiz yourself'] },
+                    { name: 'Deep Dive', percent: 25, tasks: ['Focus on weak areas', 'Final review'] }
+                ];
+            } else if (type === 'coding') {
+                phases = [
+                    { name: 'Planning', percent: 20, tasks: ['Design architecture', 'Plan features'] },
+                    { name: 'Development', percent: 50, tasks: ['Build core features', 'Implement UI', 'Add functionality'] },
+                    { name: 'Testing', percent: 20, tasks: ['Bug fixes', 'Test features'] },
+                    { name: 'Polish', percent: 10, tasks: ['Optimize', 'Documentation'] }
+                ];
+            } else {
+                phases = [
+                    { name: 'Planning', percent: 25, tasks: ['Brainstorm ideas', 'Create plan'] },
+                    { name: 'Creation', percent: 60, tasks: ['Work on project'] },
+                    { name: 'Finishing', percent: 15, tasks: ['Final touches', 'Review'] }
+                ];
+            }
+
+            // Generate timeline
+            let html = `<div style="background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 20px; margin-bottom: 15px;">
+                <h3 style="color: var(--accent); margin-bottom: 15px;">📊 ${name}</h3>
+                <p style="opacity: 0.8; margin-bottom: 15px;">${hours} hours over ${daysAvailable} days</p>
+            </div>`;
+
+            let currentDay = 0;
+            phases.forEach((phase, i) => {
+                const phaseHours = (hours * phase.percent / 100).toFixed(1);
+                const phaseDays = Math.max(1, Math.ceil(daysAvailable * phase.percent / 100));
+                
+                html += `<div class="project-phase">
+                    <div class="phase-header">
+                        <div class="phase-title">PHASE ${i + 1}: ${phase.name.toUpperCase()}</div>
+                        <div class="phase-time">${phaseHours}h</div>
+                    </div>`;
+
+                phase.tasks.forEach((task, j) => {
+                    const taskDay = new Date(today);
+                    taskDay.setDate(today.getDate() + currentDay + Math.floor(j * phaseDays / phase.tasks.length));
+                    const dateStr = taskDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    html += `<div class="phase-task">
+                        📅 ${dateStr}: ${task}
+                    </div>`;
+                });
+
+                html += '</div>';
+                currentDay += phaseDays;
+            });
+
+            html += `<button class="btn" onclick="scheduleProject('${name}', ${hours})" style="margin-top: 20px;">
+                Add All to Tasks 🚀
+            </button>`;
+
+            document.getElementById('projectResult').innerHTML = html;
+            addXP(20, 'Project Planned');
+            vibrate(100);
+        }
+
+        function scheduleProject(name, hours) {
+            // This would add all phases as tasks
+            addXP(50, 'Project Scheduled');
+            showAchievement('🎯 Project Ready!', `${name} broken down into actionable tasks!`);
+        }
+
+        // Notifications
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                setTimeout(() => {
+                    Notification.requestPermission();
+                }, 2000);
+            }
+        }
+
+        function scheduleNotification(task) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const taskTime = new Date(task.date + 'T' + task.time);
+                const notifyTime = new Date(taskTime - task.reminderMins * 60000);
+                const now = new Date();
+                
+                if (notifyTime > now) {
+                    setTimeout(() => {
+                        new Notification('⚡ FlowState Reminder', {
+                            body: `"${task.title}" in ${task.reminderMins} minutes!`,
+                            icon: '⚡',
+                            vibrate: [200, 100, 200]
+                        });
+                        vibrate([200, 100, 200]);
+                    }, notifyTime - now);
+                }
+            }
+        }
+
+        // Achievements
+        function showAchievement(title, desc) {
+            const popup = document.getElementById('achievementPopup');
+            document.getElementById('achievementTitle').textContent = title;
+            document.getElementById('achievementDesc').textContent = desc;
+            
+            popup.classList.add('show');
+            vibrate([100, 50, 100, 50, 100]);
+            
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 3000);
+        }
+
+        function showFloatingXP(amount, reason) {
+            // Could add animated +XP popup here
+            console.log(`+${amount} XP: ${reason}`);
+        }
+
+        // Confetti
+        function triggerConfetti() {
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.background = ['#FF6B35', '#FDC500', '#00D9A3', '#9D4EDD'][Math.floor(Math.random() * 4)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 20);
+            }
+        }
+
+        // Haptic feedback
+        function vibrate(pattern) {
+            if ('vibrate' in navigator && settings.haptic) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // Save functions
+        function saveUserData() {
+            localStorage.setItem('userData', JSON.stringify(userData));
+        }
+
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function saveHabits() {
+            localStorage.setItem('habits', JSON.stringify(habits));
+            // Reset daily
+            const now = new Date();
+            if (now.getHours() === 0 && now.getMinutes() === 0) {
+                habits.forEach(h => h.completed = false);
+                saveHabits();
+            }
+        }
+
+        function saveMeals() {
+            // Only keep today's meals
+            const today = new Date().toDateString();
+            meals = meals.filter(m => new Date(m.timestamp).toDateString() === today);
+            localStorage.setItem('meals', JSON.stringify(meals));
+        }
+
+        function saveSettings() {
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+
+        // Achievement System
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(achievement => {
+                if (!userData.achievements.includes(achievement.id) && achievement.check()) {
+                    unlockAchievement(achievement);
+                }
+            });
+        }
+
+        function unlockAchievement(achievement) {
+            userData.achievements.push(achievement.id);
+            saveUserData();
+            
+            showAchievement(`🎉 ${achievement.name}`, achievement.desc);
+            addXP(100, 'Achievement Unlocked');
+            triggerConfetti();
+            vibrate([200, 100, 200, 100, 200]);
+            
+            renderAchievements();
+        }
+
+        function renderAchievements() {
+            const container = document.getElementById('achievementsList');
+            if (!container) return;
+            
+            const earnedCount = userData.achievements.length;
+            const totalCount = ACHIEVEMENTS.length;
+            const percent = Math.round((earnedCount / totalCount) * 100);
+            
+            document.getElementById('badgeCount').textContent = earnedCount;
+            document.getElementById('achievementPercent').textContent = percent + '%';
+            
+            container.innerHTML = ACHIEVEMENTS.map(achievement => {
+                const earned = userData.achievements.includes(achievement.id);
+                return `
+                    <div style="background: ${earned ? 'rgba(0, 217, 163, 0.1)' : 'rgba(255, 255, 255, 0.05)'}; 
+                                border: 2px solid ${earned ? 'var(--success)' : 'rgba(255, 107, 53, 0.3)'}; 
+                                border-radius: 15px; padding: 20px; margin-bottom: 15px; 
+                                opacity: ${earned ? '1' : '0.5'};">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 18px; font-weight: 700; margin-bottom: 5px;">${achievement.name}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">${achievement.desc}</div>
+                            </div>
+                            <div style="font-size: 32px;">${earned ? '✅' : '🔒'}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Social Features
+        function updateSocialTab() {
+            document.getElementById('shareLvl').textContent = userData.level;
+            document.getElementById('shareXP').textContent = userData.xp;
+            document.getElementById('shareStreak').textContent = userData.streak;
+            document.getElementById('shareTasksDone').textContent = userData.totalTasksCompleted;
+        }
+
+        function generateChallengeCode() {
+            const code = 'FS-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            document.getElementById('challengeCode').textContent = code;
+            vibrate(100);
+        }
+
+        function shareProgress() {
+            const shareText = `🔥 FlowState Progress 🔥\n\n` +
+                `⚡ Level: ${userData.level}\n` +
+                `🎯 XP: ${userData.xp}\n` +
+                `🔥 Streak: ${userData.streak} days\n` +
+                `✅ Tasks: ${userData.totalTasksCompleted}\n` +
+                `🏆 Achievements: ${userData.achievements.length}/${ACHIEVEMENTS.length}\n\n` +
+                `Join me on FlowState! 💪`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'My FlowState Progress',
+                    text: shareText
+                });
+            } else {
+                // Fallback - copy to clipboard
+                navigator.clipboard.writeText(shareText).then(() => {
+                    showAchievement('📋 Copied!', 'Share text copied to clipboard');
+                });
+            }
+            vibrate(100);
+        }
+
+        function exportToCalendar() {
+            // Generate ICS file for Apple Calendar
+            let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//FlowState//Tasks//EN\n';
+            
+            tasks.filter(t => !t.completed).forEach(task => {
+                const startDate = new Date(task.date + 'T' + (task.time || '09:00'));
+                const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour later
+                
+                icsContent += 'BEGIN:VEVENT\n';
+                icsContent += `UID:${task.id}@flowstate\n`;
+                icsContent += `DTSTAMP:${formatICSDate(new Date())}\n`;
+                icsContent += `DTSTART:${formatICSDate(startDate)}\n`;
+                icsContent += `DTEND:${formatICSDate(endDate)}\n`;
+                icsContent += `SUMMARY:${task.title}\n`;
+                icsContent += `DESCRIPTION:+${task.xp || 50} XP\n`;
+                
+                // Add reminder
+                if (task.reminderMins) {
+                    icsContent += 'BEGIN:VALARM\n';
+                    icsContent += 'ACTION:DISPLAY\n';
+                    icsContent += `TRIGGER:-PT${task.reminderMins}M\n`;
+                    icsContent += `DESCRIPTION:${task.title}\n`;
+                    icsContent += 'END:VALARM\n';
+                }
+                
+                icsContent += 'END:VEVENT\n';
+            });
+            
+            icsContent += 'END:VCALENDAR';
+            
+            // Download file
+            const blob = new Blob([icsContent], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'flowstate-tasks.ics';
+            a.click();
+            
+            showAchievement('📅 Exported!', 'Import this file in Apple Calendar');
+            addXP(25, 'Calendar Export');
+            vibrate(100);
+        }
+
+        function formatICSDate(date) {
+            return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        }
+
+        // Analytics
+        function updateAnalytics() {
+            // Update total stats
+            document.getElementById('totalTasks').textContent = userData.totalTasksCompleted;
+            document.getElementById('totalHours').textContent = Math.floor(userData.totalTasksCompleted * 0.5); // Rough estimate
+            document.getElementById('bestStreak').textContent = userData.bestStreak;
+            document.getElementById('activeDays').textContent = userData.activeDays || userData.totalTasksCompleted;
+            
+            // Draw week chart
+            drawWeekChart();
+            
+            // Draw streak calendar
+            drawStreakCalendar();
+        }
+
+        function drawWeekChart() {
+            // Simple bar chart for last 7 days
+            const canvas = document.getElementById('weekChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const today = new Date().getDay();
+            
+            // Generate fake data for demo (in real app, track daily)
+            const data = [3, 5, 4, 7, 6, 4, 8];
+            const max = Math.max(...data);
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 200;
+            
+            const barWidth = canvas.width / 7;
+            const maxHeight = canvas.height - 40;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'center';
+            
+            data.forEach((value, i) => {
+                const barHeight = (value / max) * maxHeight;
+                const x = i * barWidth;
+                const y = canvas.height - barHeight - 20;
+                
+                // Draw bar
+                const gradient = ctx.createLinearGradient(0, y, 0, canvas.height);
+                gradient.addColorStop(0, '#FF6B35');
+                gradient.addColorStop(1, '#FDC500');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x + 10, y, barWidth - 20, barHeight);
+                
+                // Draw label
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.fillText(days[i], x + barWidth / 2, canvas.height - 5);
+                
+                // Draw value
+                ctx.fillText(value, x + barWidth / 2, y - 5);
+            });
+        }
+
+        function drawStreakCalendar() {
+            const container = document.getElementById('streakCalendar');
+            if (!container) return;
+            
+            // Show last 28 days (4 weeks)
+            const today = new Date();
+            let html = '';
+            
+            for (let i = 27; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                
+                // Fake activity (in real app, track actual activity)
+                const hasActivity = Math.random() > 0.3;
+                const color = hasActivity ? 'var(--success)' : 'rgba(255, 255, 255, 0.1)';
+                
+                html += `<div style="aspect-ratio: 1; background: ${color}; border-radius: 5px;"></div>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Theme System
+        function cycleTheme() {
+            const themes = ['dark', 'light', 'oled'];
+            const currentIndex = themes.indexOf(settings.theme);
+            const nextIndex = (currentIndex + 1) % themes.length;
+            settings.theme = themes[nextIndex];
+            saveSettings();
+            applyTheme();
+        }
+
+        function applyTheme() {
+            const root = document.documentElement;
+            const toggle = document.getElementById('themeToggle');
+            
+            if (settings.theme === 'light') {
+                root.style.setProperty('--darker', '#F5F5F5');
+                root.style.setProperty('--dark', '#FFFFFF');
+                root.style.setProperty('--light', '#000000');
+                document.getElementById('themeLabel').textContent = 'Light';
+                toggle.classList.add('active');
+            } else if (settings.theme === 'oled') {
+                root.style.setProperty('--darker', '#000000');
+                root.style.setProperty('--dark', '#0A0A0A');
+                root.style.setProperty('--light', '#FFFFFF');
+                document.getElementById('themeLabel').textContent = 'OLED Black';
+                toggle.classList.add('active');
+            } else {
+                root.style.setProperty('--darker', '#0F0F1E');
+                root.style.setProperty('--dark', '#1A1A2E');
+                root.style.setProperty('--light', '#FFFFFF');
+                document.getElementById('themeLabel').textContent = 'Dark';
+                toggle.classList.remove('active');
+            }
+        }
+
+        function toggleNotifications() {
+            const toggle = document.getElementById('notifToggle');
+            if (Notification.permission === 'granted') {
+                settings.notifications = !settings.notifications;
+                toggle.classList.toggle('active');
+                saveSettings();
+            } else {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        settings.notifications = true;
+                        toggle.classList.add('active');
+                        saveSettings();
+                    }
+                });
+            }
+        }
+
+        function toggleHaptic() {
+            const toggle = document.getElementById('hapticToggle');
+            settings.haptic = !settings.haptic;
+            toggle.classList.toggle('active');
+            saveSettings();
+            if (settings.haptic) vibrate(100);
+        }
+
+        // Photo Meal Modal
+        function openPhotoMealModal() {
+            document.getElementById('mealPhoto').click();
+        }
+
+        function handleMealPhoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('mealPhotoPreview').src = e.target.result;
+                    document.getElementById('mealPhotoPreview').style.display = 'block';
+                    document.getElementById('photoMealModal').classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function logPhotoMeal(name, calories) {
+            addMeal(name, calories);
+            closePhotoMealModal();
+        }
+
+        function logPhotoCustom() {
+            const calories = parseInt(document.getElementById('photoCustomCal').value);
+            if (calories) {
+                addMeal('📸 Custom', calories);
+                closePhotoMealModal();
+            }
+        }
+
+        function closePhotoMealModal() {
+            document.getElementById('photoMealModal').classList.remove('active');
+            document.getElementById('photoCustomCal').value = '';
+        }
+
+        function updateCalorieGoal() {
+            calorieGoal = parseInt(document.getElementById('calorieGoalInput').value) || 2000;
+            localStorage.setItem('calorieGoal', calorieGoal);
+            updateNutrition();
+            vibrate(100);
+        }
+
+        // Shortcuts Guide
+        function showShortcutsGuide() {
+            document.getElementById('shortcutsModal').classList.add('active');
+        }
+
+        function closeShortcutsModal() {
+            document.getElementById('shortcutsModal').classList.remove('active');
+        }
+
+        // Data Management
+        function exportAllData() {
+            const allData = {
+                userData,
+                tasks,
+                habits,
+                meals,
+                settings,
+                calorieGoal,
+                exportDate: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(allData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `flowstate-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            showAchievement('💾 Backed Up!', 'Your data is safe');
+            vibrate(100);
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // Restore data
+                        if (data.userData) userData = data.userData;
+                        if (data.tasks) tasks = data.tasks;
+                        if (data.habits) habits = data.habits;
+                        if (data.meals) meals = data.meals;
+                        if (data.settings) settings = data.settings;
+                        if (data.calorieGoal) calorieGoal = data.calorieGoal;
+                        
+                        // Save everything
+                        saveUserData();
+                        saveTasks();
+                        saveHabits();
+                        saveMeals();
+                        saveSettings();
+                        localStorage.setItem('calorieGoal', calorieGoal);
+                        
+                        // Reload UI
+                        location.reload();
+                    } catch (err) {
+                        alert('Error importing data. Make sure it\'s a valid backup file.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function resetAllData() {
+            if (confirm('⚠️ This will DELETE ALL your data! Are you absolutely sure?')) {
+                if (confirm('Really really sure? This cannot be undone!')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+        }
+
+        // Reset habits daily at midnight
+        setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 0 && now.getMinutes() === 0) {
+                habits.forEach(h => h.completed = false);
+                meals = [];
+                saveHabits();
+                saveMeals();
+                updateUI();
+                renderHabits();
+                updateNutrition();
+            }
+        }, 60000);
+    </script>
+</body>
+</html>
